@@ -1,0 +1,9 @@
+Library/
+Logs/
+Packages/
+Temp/
+.vs/XcodeAPI/DesignTimeBuild/.dtbcache
+.vs/
+Assembly-CSharp-Editor.csproj
+obj/
+XcodeAPI.sln
