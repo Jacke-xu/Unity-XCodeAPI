@@ -10,7 +10,7 @@
 
 6、愉快的在XcodeConfig中进行自定义设置吧
 
-获取设置使用的Key：(推荐)终端内cd到Xcode工程所在目录，然后输入命令xcodebuild -showBuildSettings 
+获取设置使用的Key：(推荐)终端内cd到Xcode工程所在目录，然后输入命令：xcodebuild -showBuildSettings 
 
 ​                                      或者：https://developer.apple.com/library/archive/documentation/DeveloperTools/Reference/XcodeBuildSettingRef/1-Build_Setting_Reference/build_setting_ref.html
 

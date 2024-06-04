@@ -21,7 +21,7 @@ public class ProjectPostProcess
             UnityEngine.Debug.Log("开始配置Xcode工程");
 
             // 修改项目设置 如签名模式(手动、自动) BundleID Bitcode Framework *tbd 自定义资源(如代码中使用到的图片资源等) 等，后面两个参数依次为 TeamId、BundleID
-            ProjectSetting(buildProjectPath, "xxxxxx", "com.xx.xxx");
+            ProjectSetting(buildProjectPath, "xxx", "com.xx.xxx");
 
             // 修改Info.Plist文件  如权限  version  build，后面两个参数依次为 version、build appName
             InfoPlistSetting(buildProjectPath, "1.0", "1.0", "SDK框架");
@@ -37,8 +37,8 @@ public class ProjectPostProcess
 
             // 在iOS指定代码后面新增代码或方法
             XEditCodeModel[] insertCodeModes = { XEditCodeModel.InsertInit("Classes/UnityAppController.mm", "UnitySendDeviceToken(deviceToken);", "\n    NSLog(@\"这是Unity通过XcodeAPI插入的一行代码\");"),
-                                                 XEditCodeModel.InsertInit("Classes/UnityAppController.mm", "- (void)application:(UIApplication*)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData*)deviceToken\n{\n    AppController_SendNotificationWithArg(kUnityDidRegisterForRemoteNotificationsWithDeviceToken, deviceToken);\n    UnitySendDeviceToken(deviceToken);\n\n    NSLog(@\"这是Unity通过XcodeAPI插入的一行代码\");\n\n}", "\n- (void)testUnitAddCustomMethod {\n    NSLog(@\"这是Unity通过XcodeAPI插入的一个方法\");\n}")
-                                               };
+            XEditCodeModel.InsertInit("Classes/UnityAppController.mm", "- (void)application:(UIApplication*)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData*)deviceToken\n{\n    AppController_SendNotificationWithArg(kUnityDidRegisterForRemoteNotificationsWithDeviceToken, deviceToken);\n    UnitySendDeviceToken(deviceToken);\n\n    NSLog(@\"这是Unity通过XcodeAPI插入的一行代码\");\n\n}", "\n- (void)testUnitAddCustomMethod {\n    NSLog(@\"这是Unity通过XcodeAPI插入的一个方法\");\n}")
+            };
             InsertCode(buildProjectPath, insertCodeModes);
         }
     }
@@ -53,6 +53,7 @@ public class ProjectPostProcess
         // 选择要设置的target(获取指定的Target如：project.TargetGuidByName("Unity-iPhone")或者：project.TargetGuidByName("UnityFramework"))
         string mainTarget = project.GetUnityMainTargetGuid();
         string frameworkTarget = project.GetUnityFrameworkTargetGuid();
+        // string testTarget = project.TargetGuidByName(PBXProject.GetUnityTestTargetName());
 
         // 证书签名模式 手动：Manual，自动：Automatic
         project.SetBuildProperty(mainTarget, "CODE_SIGN_STYLE", "Automatic");
@@ -88,6 +89,25 @@ public class ProjectPostProcess
 
         // 设置 other link flags -ObjC
         // project.AddBuildProperty(mainTarget, "OTHER_LDFLAGS", "-ObjC");
+        // project.SetBuildProperty(mainTarget, "OTHER_LDFLAGS", "-ObjC -all_load -lstdc++ -lsqlite3");
+
+        /*
+         * 添加SwiftPackageManager中的Framework
+         * 当工程中用到了SwiftPakcageManager，则需要调用以下方法，其中AddRemotePackageFrameworkToProject既是
+           添加到LinkBinaryWithLibraries中，framework的名字不需要带任何后缀
+         * 由于remoteFramework全部是添加至frameworkTarget中，mainTarget中的代码可能会报错，如果mainTarget中也添加一次，
+           会报两个target中有重复代码的提示，(如果报错的话)解决方法是把UnityFramework添加至Unity-iPhone的LinkBinaryWithLibraries中，代码如下：
+         */
+        string kingfisherGuid = project.AddRemotePackageReferenceAtVersion("https://github.com/onevcat/Kingfisher.git", "7.11.0");
+        project.AddRemotePackageFrameworkToProject(frameworkTarget, "Kingfisher", kingfisherGuid, false);
+        // 如果报错两个target中有重复代码，则执行如下代码
+        //string file = "UnityFramework.framework";
+        //string fileGuid = project.AddFile(file, file, PBXSourceTree.Build);
+        //if (fileGuid != null)
+        //{
+        //    var sourcesBuildPhase = project.GetFrameworksBuildPhaseByTarget(mainTarget);
+        //    project.AddFileToBuildSection(mainTarget, sourcesBuildPhase, fileGuid);
+        //}
 
         // 添加系统Framework
         project.AddFrameworkToProject(frameworkTarget, "StoreKit.framework", true); // 内购需要 否则PBXCapabilityType.InAppPurchase会加不上
@@ -107,10 +127,10 @@ public class ProjectPostProcess
         // PBXProjectExtensions.AddFileToEmbedFrameworks(project, frameworkTarget, fileGuid);
         // project.SetBuildProperty(frameworkTarget, "LD_RUNPATH_SEARCH_PATHS", "$(inherited) @executable_path/Frameworks");
 
-        // 添加 Capabilities  -  内购
-        // project.AddCapability(mainTarget, PBXCapabilityType.InAppPurchase);
+        // 添加内购
+        project.AddCapability(mainTarget, PBXCapabilityType.InAppPurchase);
 
-        // 添加 Capabilities  -  推送(需要把正确运行的Xcode工程的entitlements文件复制到Unity工程里一份(注意路径)，然后代码会自动复制进iOS工程里使用)
+        // 添加推送(需要把正确运行的Xcode工程的entitlements文件复制到Unity工程里一份(注意路径)，然后代码会自动复制进iOS工程里使用)
         // string entitlement = Application.dataPath + "/Editor/AppleNative/Unity-iPhone.entitlements";
         // File.Copy(entitlement, buildProjectPath + "/Unity-iPhone.entitlements");
         // project.AddCapability(mainTarget, PBXCapabilityType.PushNotifications, "Unity-iPhone.entitlements", true);
